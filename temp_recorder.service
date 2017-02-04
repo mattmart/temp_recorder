@@ -1,0 +1,13 @@
+[Unit]
+Description=regular system to run in background
+Documentation=https://www.martinezmanor.com/www/trip_plan/show_map
+
+[Service]
+EnvironmentFile=-/etc/default/temp_recorder
+ExecStart=/usr/local/bin/temp_recorder -f $EXTRA_OPTS
+IgnoreSIGPIPE=false
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+
