@@ -54,19 +54,48 @@ class TempRecorder:
         temperature = float(temperaturedata[2:])
         temperature = temperature / 1000
         return temperature
-                                     
+
+    def _get_probe_list(self, directory):
+        '''
+        inspects a given directory to see if it
+        immediately contains any temperature probes
+        '''
+        try:
+            dirs = os.listdir(directory)
+        except:
+            dirs = []
+            
+        #special directory that always exists if temp probe
+        #plugged in
+        dirs = [x for x in dirs if x!= 'w1_bus_master1']
+            
+        return dirs
+
+        
     def do_something(self, log):
         '''
         the main heart of the daemon. This is
         where we'll loop forever reading the temp
         and reporting it to wherever we decide
         '''
+        directory_probe_devices = "/tmp/sys/bus/w1/devices/"
         while True:
-            log("testing closure logger")
-            time.sleep(5)
-            #"/sys/bus/w1/devices/"+slave+"/w1_slave"
-            #self._probe_id = "28-0000054823e9"
+            dirs = self._get_probe_list(directory_probe_devices)
 
+            if not dirs:
+                log("no temperature probes found connected")
+                self._exit(1)
+
+            log("possible probes found were:" + str(dirs))
+            #TODO: error checking here: we need to verify directories
+            #contain w1_slave and it is formatted appropriately
+            #TODO: send dictionary as json object to API
+            probe_temps = {}
+            for probe in dirs:
+                temp = self._read_temp(directory_probe_devices + probe + '/w1_slave')
+                probe_temps[probe] = temp
+                log("temps for probes were: " + str(probe_temps))
+            time.sleep(5)
     
     def _setup_signals(self, lockf):
         '''
@@ -76,9 +105,13 @@ class TempRecorder:
         
         not sure how to test installing signals...
         '''
-        def __signal_handler(signal, frame):
-            self._shut_down(lockf)
+        def __signal_handler(signal, frame, exit_status = 0):
+            self._shut_down(lockf, exit_status)
+
+        def __exit(exit_status = 0):
+            self._shut_down(lockf, exit_status)
         
+        self._exit = __exit
         signal.signal(signal.SIGINT, __signal_handler)
         signal.signal(signal.SIGTERM, __signal_handler)
     
@@ -105,11 +138,17 @@ class TempRecorder:
         
         fh.setFormatter(formatter)
         logger.addHandler(fh)
+
+        if sys.stdout.isatty():
+            ch = logging.StreamHandler(sys.stdout)
+            ch.setLevel(logging.INFO)
+            ch.setFormatter(formatter)
+            logger.addHandler(ch)
     
         def _log_info(msg):
             logger.info(msg)
     
-        return _log_info
+        return _log_info        
         
     def start_daemon(self, pidf, logf, lockf):
         '''
@@ -144,3 +183,10 @@ if __name__ == "__main__":
     tr = TempRecorder()
     tr.start_daemon(pidf=args.pid_file, logf=args.log_file, lockf=args.lock_file)
 
+#mkdir /tmp/sys/bus/w1/devices
+#cd /tmp/sys/bus/w1/devices
+#mkdir ../../../devices/w1_bus_master1/
+#mkdir ../../../devices/w1_bus_master1/28-0000054823e9
+#ln -s ../../../devices/w1_bus_master1 w1_bus_master1 
+#ln -s ../../../devices/w1_bus_master1/28-0000054823e9 
+#echo "4e 01 4b 46 7f ff 02 10 d9 : crc=d9 YES\n4e 01 4b 46 7f ff 02 10 d9 t=20875\n" > 28-0000054823e9/w1_slave
