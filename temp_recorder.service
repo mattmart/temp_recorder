@@ -4,7 +4,7 @@ Documentation=https://www.martinezmanor.com/www/trip_plan/show_map
 
 [Service]
 EnvironmentFile=-/etc/default/temp_recorder
-ExecStart=/usr/local/bin/temp_recorder -f $EXTRA_OPTS
+ExecStart=/var/lib/temp_recorder/temp_recorder.py $EXTRA_OPTS
 IgnoreSIGPIPE=false
 KillMode=process
 
