@@ -6,6 +6,9 @@ import os
 import time
 import argparse
 import logging
+import requests
+import socket
+import json
 
 def get_logger_name():
     return 'temp_recorder'
@@ -89,13 +92,32 @@ class TempRecorder:
             log("possible probes found were:" + str(dirs))
             #TODO: error checking here: we need to verify directories
             #contain w1_slave and it is formatted appropriately
-            #TODO: send dictionary as json object to API
-            probe_temps = {}
+            probe_temps = { 'probes' : dirs,}
+            temps = {}
             for probe in dirs:
                 temp = self._read_temp(directory_probe_devices + probe + '/w1_slave')
-                probe_temps[probe] = temp
+                temps[probe] = temp
                 log("temps for probes were: " + str(probe_temps))
+            probe_temps['temps'] = temps
+            self._send_probe_temps(probe_temps)
             time.sleep(5)
+            
+    def _send_probe_temps(self, probe_temps):
+        '''
+        sends the collected temps to api after
+        adding some metadata like hostname
+        '''
+        payload = dict(probe_temps)
+        payload['host'] = socket.gethostname()
+        payload['api_key'] = 'Jr6byKtjbv2G5zwVtTiw26Dx71gmIqOB8xuc9Ob54M3jfxSt1T'
+
+        api_url = "https://api.martinezmanor.com/api/v1/record/temp/record_temp"
+        api_url = "http://192.168.36.220:8888/api/v1/record/temp/record_temp"
+        
+        headers = { 'content-type': 'application/json'}
+        #TODO: decide if a 500 or 40* should kill this process.
+        #still not convinced, will have to mull it over...
+        response = requests.post(api_url, json=payload, headers=headers)
     
     def _setup_signals(self, lockf):
         '''
@@ -183,10 +205,3 @@ if __name__ == "__main__":
     tr = TempRecorder()
     tr.start_daemon(pidf=args.pid_file, logf=args.log_file, lockf=args.lock_file)
 
-#mkdir /tmp/sys/bus/w1/devices
-#cd /tmp/sys/bus/w1/devices
-#mkdir ../../../devices/w1_bus_master1/
-#mkdir ../../../devices/w1_bus_master1/28-0000054823e9
-#ln -s ../../../devices/w1_bus_master1 w1_bus_master1 
-#ln -s ../../../devices/w1_bus_master1/28-0000054823e9 
-#echo "4e 01 4b 46 7f ff 02 10 d9 : crc=d9 YES\n4e 01 4b 46 7f ff 02 10 d9 t=20875\n" > 28-0000054823e9/w1_slave
