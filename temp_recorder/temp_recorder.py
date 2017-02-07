@@ -14,7 +14,6 @@ def get_logger_name():
     return 'temp_recorder'
  
 class TempRecorder:
-
    
     def _shut_down(self, lockf, exit_status = 0):
         '''

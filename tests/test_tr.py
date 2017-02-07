@@ -3,7 +3,6 @@ import unittest
 import tempfile
 import os
 
-
 class TestTrSuite(unittest.TestCase):
     """Basic test cases."""
 
@@ -47,7 +46,7 @@ class TestTrSuite(unittest.TestCase):
         tr = temp_recorder.TempRecorder()
 
         ntf = tempfile.NamedTemporaryFile(delete=False)
-        app_name = temp_recorder.temp_recorder.get_logger_name()
+        app_name = temp_recorder.get_logger_name()
         log = tr._setup_logger(ntf.name)
         log_msg = "testing logger"
         log(log_msg)
