@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.5
+#!/usr/bin/env python3
 
 import signal
 import sys
@@ -99,7 +99,7 @@ class TempRecorder:
                 log("temps for probes were: " + str(probe_temps))
             probe_temps['temps'] = temps
             self._send_probe_temps(probe_temps)
-            time.sleep(5)
+            time.sleep(2)
             
     def _send_probe_temps(self, probe_temps):
         '''
