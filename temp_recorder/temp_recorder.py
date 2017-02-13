@@ -80,7 +80,7 @@ class TempRecorder:
         where we'll loop forever reading the temp
         and reporting it to wherever we decide
         '''
-        directory_probe_devices = "/tmp/sys/bus/w1/devices/"
+        directory_probe_devices = "/sys/bus/w1/devices/"
         while True:
             dirs = self._get_probe_list(directory_probe_devices)
 
@@ -111,11 +111,11 @@ class TempRecorder:
         payload['api_key'] = 'Jr6byKtjbv2G5zwVtTiw26Dx71gmIqOB8xuc9Ob54M3jfxSt1T'
 
         api_url = "https://api.martinezmanor.com/api/v1/record/temp/record_temp"
-        api_url = "http://192.168.36.220:8888/api/v1/record/temp/record_temp"
         
         headers = { 'content-type': 'application/json'}
         #TODO: decide if a 500 or 40* should kill this process.
         #still not convinced, will have to mull it over...
+        print(payload)
         response = requests.post(api_url, json=payload, headers=headers)
     
     def _setup_signals(self, lockf):
