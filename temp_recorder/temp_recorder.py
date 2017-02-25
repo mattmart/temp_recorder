@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import signal
-import sys
 import os
 import time
 import argparse
@@ -9,6 +8,15 @@ import logging
 import requests
 import socket
 import json
+import sys
+
+#disgusting
+sys.path.append(os.path.join(os.path.dirname(__file__), 'sym_mod'))
+import key_manager
+
+
+def verify_key():
+    key = key_manager.KeyManager("/tmp/tmp")
 
 def get_logger_name():
     return 'temp_recorder'
@@ -96,7 +104,7 @@ class TempRecorder:
             for probe in dirs:
                 temp = self._read_temp(directory_probe_devices + probe + '/w1_slave')
                 temps[probe] = temp
-                log("temps for probes were: " + str(probe_temps))
+                #log("temps for probes were: " + str(probe_temps))
             probe_temps['temps'] = temps
             self._send_probe_temps(probe_temps)
             time.sleep(2)
@@ -108,7 +116,8 @@ class TempRecorder:
         '''
         payload = dict(probe_temps)
         payload['host'] = socket.gethostname()
-        payload['api_key'] = 'Jr6byKtjbv2G5zwVtTiw26Dx71gmIqOB8xuc9Ob54M3jfxSt1T'
+        key = key_manager.KeyManager("/tmp/tmp")
+        payload['api_key'] = key
 
         api_url = "https://api.martinezmanor.com/api/v1/record/temp/record_temp"
         
