@@ -1,0 +1,3 @@
+[submodule "temp_recorder/sym_mod"]
+	path = temp_recorder/sym_mod
+	url = /root/sym_mod/
