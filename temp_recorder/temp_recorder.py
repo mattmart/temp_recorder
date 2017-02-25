@@ -16,7 +16,11 @@ import key_manager
 
 
 def verify_key():
-    key = key_manager.KeyManager("/tmp/tmp")
+    key = key_manager.KeyManager("/var/lib/temp_recorder/api_key")
+    return key
+
+def get_key():
+    return verify_key()
 
 def get_logger_name():
     return 'temp_recorder'
@@ -116,8 +120,7 @@ class TempRecorder:
         '''
         payload = dict(probe_temps)
         payload['host'] = socket.gethostname()
-        key = key_manager.KeyManager("/tmp/tmp")
-        payload['api_key'] = key
+        payload['api_key'] = get_key()
 
         api_url = "https://api.martinezmanor.com/api/v1/record/temp/record_temp"
         
