@@ -16,17 +16,30 @@ import key_manager
 
 
 def verify_key():
-    key = key_manager.KeyManager("/var/lib/temp_recorder/api_key")
-    return key
-
-def get_key():
-    return verify_key()
+    km = key_manager.KeyManager("/var/lib/temp_recorder/api_key")
+    return km
 
 def get_logger_name():
     return 'temp_recorder'
  
 class TempRecorder:
-   
+    def get_key(self, log):
+        '''
+        tries to get the key from the keymanager.
+        wraps the call in a nice method to release lock
+        '''
+        log("Attempting to get key")
+        try:
+            key_manager = verify_key()
+        except KeyInitException as e:
+            log("Error while trying to get key!")
+            log("Error was: " + str(e))
+            self._exit(1)
+        log("Key acquired")
+        
+        return key_manager.get_api_key()
+
+  
     def _shut_down(self, lockf, exit_status = 0):
         '''
         release and clean up all lock/log files here
@@ -93,6 +106,7 @@ class TempRecorder:
         and reporting it to wherever we decide
         '''
         directory_probe_devices = "/sys/bus/w1/devices/"
+        key = self.get_key(log)
         while True:
             dirs = self._get_probe_list(directory_probe_devices)
 
@@ -110,24 +124,23 @@ class TempRecorder:
                 temps[probe] = temp
                 #log("temps for probes were: " + str(probe_temps))
             probe_temps['temps'] = temps
-            self._send_probe_temps(probe_temps)
+            self._send_probe_temps(probe_temps, key)
             time.sleep(2)
             
-    def _send_probe_temps(self, probe_temps):
+    def _send_probe_temps(self, probe_temps, key):
         '''
         sends the collected temps to api after
         adding some metadata like hostname
         '''
         payload = dict(probe_temps)
         payload['host'] = socket.gethostname()
-        payload['api_key'] = get_key()
+        payload['api_key'] = key
 
         api_url = "https://api.martinezmanor.com/api/v1/record/temp/record_temp"
         
         headers = { 'content-type': 'application/json'}
         #TODO: decide if a 500 or 40* should kill this process.
         #still not convinced, will have to mull it over...
-        print(payload)
         response = requests.post(api_url, json=payload, headers=headers)
     
     def _setup_signals(self, lockf):
@@ -204,7 +217,12 @@ class TempRecorder:
         log = self._setup_logger(logf)
     
         log("Temp_recorder daemon started.")
-        self.do_something(log)
+        try:
+            self.do_something(log)
+        except Exception as e: #whatever went wrong, clean up after ourselves
+            log("Error while attempting to record temps")
+            log("Error was: " + str(e))
+            self._exit(1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Example daemon in Python")
