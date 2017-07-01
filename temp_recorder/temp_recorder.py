@@ -36,9 +36,7 @@ class TempRecorder:
             log("Error was: " + str(e))
             self._exit(1)
         log("Key acquired")
-        
         return key_manager.get_api_key()
-
   
     def _shut_down(self, lockf, exit_status = 0):
         '''
@@ -143,7 +141,7 @@ class TempRecorder:
         #still not convinced, will have to mull it over...
         response = requests.post(api_url, json=payload, headers=headers)
     
-    def _setup_signals(self, lockf):
+    def _setup_signals(self, lockf, ignore_lockfile):
         '''
         sets up cleaning up the lock file
         and the logfile whenever SIGTERM or 
@@ -151,11 +149,19 @@ class TempRecorder:
         
         not sure how to test installing signals...
         '''
-        def __signal_handler(signal, frame, exit_status = 0):
-            self._shut_down(lockf, exit_status)
+        if not ignore_lockfile:
+            def __signal_handler(signal, frame, exit_status = 0):
+                self._shut_down(lockf, exit_status)
 
-        def __exit(exit_status = 0):
-            self._shut_down(lockf, exit_status)
+            def __exit(exit_status = 0):
+                self._shut_down(lockf, exit_status)
+        else:
+            def __signal_handler(signal, frame, exit_status = 0):
+                sys.exit(exit_status)
+
+            def __exit(exit_status = 0):
+                sys.exit(exit_status)
+
         
         self._exit = __exit
         signal.signal(signal.SIGINT, __signal_handler)
@@ -196,7 +202,7 @@ class TempRecorder:
     
         return _log_info        
         
-    def start_daemon(self, pidf, logf, lockf):
+    def start_daemon(self, pidf, logf, lockf, ignore_lockfile = False):
         '''
         starts up the daemon with the log/lockfiles
         this runs forever if it can grab the lockfile
@@ -206,16 +212,20 @@ class TempRecorder:
         running forever and sys exit business. Anything
         added here should have other test coverage
         '''
-    
-        try:
-            self._grab_lockfile(lockf)
-        except:
-            print("failed to grab lock file, bailing...")
-            sys.exit(0)
- 
-        self._setup_signals(lockf)
         log = self._setup_logger(logf)
-    
+        self._setup_signals(lockf,ignore_lockfile)
+        
+        if not ignore_lockfile:
+          try:
+              self._grab_lockfile(lockf)
+          except:
+              print("failed to grab lock file, bailing...")
+              log("failed to grab lock file, bailing...")
+              sys.exit(0)
+        else:
+          print("ignoring lock file, running anyways")
+          log("ignoring lock file, running anyways")
+        
         log("Temp_recorder daemon started.")
         try:
             self.do_something(log)
@@ -229,8 +239,10 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--pid-file', default='/var/run/temp_recorder.pid')
     parser.add_argument('-l', '--log-file', default='/var/log/temp_recorder.log')
     parser.add_argument('-o', '--lock-file', default='/var/lock/temp_recorder')
+    parser.set_defaults(ignore_lf=False)
+    parser.add_argument('-i', '--ignore-lock-file', dest='ignore_lf', action='store_true')
     
     args = parser.parse_args()
     tr = TempRecorder()
-    tr.start_daemon(pidf=args.pid_file, logf=args.log_file, lockf=args.lock_file)
+    tr.start_daemon(pidf=args.pid_file, logf=args.log_file, lockf=args.lock_file, ignore_lockfile=args.ignore_lf)
 
